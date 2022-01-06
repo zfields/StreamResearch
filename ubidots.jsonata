@@ -1,0 +1,140 @@
+(
+  $square := function($n) {
+    $n * $n
+  };
+  $cube := function($n) {
+    $n * $n * $n
+  };
+  $mV_3V3_12_bit := function($adc_sample) {(
+    $max_adc := 4095;
+    $max_mV := 3300;
+    ($adc_sample * $max_mV / $max_adc)
+  )};
+  $do_saturation := function($do_raw) {(
+    $do_full_sat := 440;
+    ($do_raw / $do_full_sat)
+  )};
+  $do_mg_L := function($do_sat, $temp){(
+    ($do_sat * (($temp < 1) ? 14.621
+             : (($temp < 2) ? 14.216
+             : (($temp < 3) ? 13.829
+             : (($temp < 4) ? 13.460
+             : (($temp < 5) ? 13.107
+             : (($temp < 6) ? 12.770
+             : (($temp < 7) ? 12.447
+             : (($temp < 8) ? 12.139
+             : (($temp < 9) ? 11.843
+             : (($temp < 10) ? 11.559
+             : (($temp < 11) ? 11.288
+             : (($temp < 12) ? 11.027
+             : (($temp < 13) ? 10.777
+             : (($temp < 14) ? 10.537
+             : (($temp < 15) ? 10.306
+             : (($temp < 16) ? 10.084
+             : (($temp < 17) ? 9.870
+             : (($temp < 18) ? 9.665
+             : (($temp < 19) ? 9.467
+             : (($temp < 20) ? 9.276
+             : (($temp < 21) ? 9.092
+             : (($temp < 22) ? 8.914
+             : (($temp < 23) ? 8.743
+             : (($temp < 24) ? 8.578
+             : (($temp < 25) ? 8.418
+             : (($temp < 26) ? 8.263
+             : (($temp < 27) ? 8.113
+             : (($temp < 28) ? 7.968
+             : (($temp < 29) ? 7.827
+             : (($temp < 30) ? 7.691
+             : (($temp < 31) ? 7.558
+             : (($temp < 32) ? 7.430
+             : (($temp < 33) ? 7.305
+             : (($temp < 34) ? 7.183
+             : (($temp < 35) ? 7.065
+             : (($temp < 36) ? 6.949
+             : (($temp < 37) ? 6.837
+             : (($temp < 38) ? 6.727
+             : (($temp < 39) ? 6.619
+             : (($temp < 40) ? 6.514
+             : 6.412
+    )))))))))))))))))))))))))))))))))))))))))
+  )};
+  $orp_mV := function($orp_raw) {(
+    $adc_12_bit_adj := 1228.5;
+    $calibration_adj := 454;
+    $mV_3V3_12_bit($orp_raw - $adc_12_bit_adj - $calibration_adj)
+  )};
+  $pH := function($pH_raw) {(
+    $adc_4_0_pH := 2225;
+    $adc_7_0_pH := 1625;
+    $adc_10_0_pH := 1025;
+    $low_pH := 4;
+    $neutral_pH := 7;
+    $high_pH := 10;
+    ($pH_raw > $adc_7_0_pH ? ($neutral_pH - (($neutral_pH - $low_pH) * ($pH_raw - $adc_7_0_pH) / ($adc_4_0_pH - $adc_7_0_pH))) : ($neutral_pH + (($high_pH - $neutral_pH) * ($pH_raw - $adc_7_0_pH) / ($adc_10_0_pH - $adc_7_0_pH))))
+  )};
+  $tbt_NTU := function($tbt_raw){(
+    $tbt_V := ($mV_3V3_12_bit($tbt_raw) / 1000);
+    (($tbt_V <= 1.650) ? 3000
+  : (($tbt_V >= 2.772) ? 0
+  : ((-2572.2 * $square($tbt_V)) + (8700.5 * $tbt_V) - 4352.9)))
+  )};
+  $tds_ppm := function($tds_raw, $temp) {(
+    $tds_V := ($mV_3V3_12_bit($tds_raw) / 1000);
+    $tds_V_temp_adj := ($tds_V / (1 + 0.02 * ($temp - 25)));
+    (((133.42 * $cube($tds_V_temp_adj)) - (255.86 * $square($tds_V_temp_adj)) + (857.39 * $tds_V_temp_adj)) * 0.5)
+  )};
+  {
+    "do_raw":{
+      "value":body.do,
+      "timestamp":(when * 1000)
+    },
+    "do_sat_pct":{
+      "value":($do_saturation(body.do) * 100),
+      "timestamp":(when * 1000)
+    },
+    "do_mg_l":{
+      "value":$do_mg_L($do_saturation(body.do), body.temp),
+      "timestamp":(when * 1000)
+    },
+    "orp_raw":{
+      "value":body.orp,
+      "timestamp":(when * 1000)
+    },
+    "orp_mv":{
+      "value":$orp_mV(body.orp),
+      "timestamp":(when * 1000)
+    },
+    "ph_raw":{
+      "value":body.ph,
+      "timestamp":(when * 1000)
+    },
+    "ph":{
+      "value":$pH(body.ph),
+      "timestamp":(when * 1000)
+    },
+    "tbt_raw":{
+      "value":body.tbt,
+      "timestamp":(when * 1000)
+    },
+    "tbt_ntu":{
+      "value":$tbt_NTU(body.tbt),
+      "timestamp":(when * 1000)
+    },
+    "tds_raw":{
+      "value":body.tds,
+      "timestamp":(when * 1000)
+    },
+    "tds_ppm":{
+      "value":$tds_ppm(body.tds,body.temp),
+      "timestamp":(when * 1000)
+    },
+    "temp":{
+      "value":body.temp,
+      "timestamp":(when * 1000)
+    },
+    "location":{
+      "latitude":tri_lat,
+      "longitude":tri_lon
+    }
+  }
+)
